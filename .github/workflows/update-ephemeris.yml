@@ -1,0 +1,43 @@
+name: Update ephemeris
+
+on:
+  schedule:
+    # 08:17 China Standard Time. GitHub cron expressions use UTC.
+    - cron: "17 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-ephemeris
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+      - name: Build ephemeris from telemetry
+        run: python scripts/build_ephemeris.py
+      - name: Validate generated changes
+        run: git diff --check
+      - name: Commit updated ephemeris
+        shell: bash
+        run: |
+          if git diff --quiet -- latest.tle history.tle; then
+            echo "Telemetry epoch is already published."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add latest.tle history.tle
+          git commit -m "自动更新遥测星历"
+          git push

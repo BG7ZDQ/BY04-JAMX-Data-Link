@@ -1,0 +1,16 @@
+{
+  "data": {
+    "BY-04": {
+      "UTC累计秒整数": {"f_double": 304781595, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "轨道半长轴": {"f_double": 6917966.5, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "轨道偏心率": {"f_double": 0.0005337741449475289, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "轨道倾角": {"f_double": 1.7004383948845463, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "升交点赤经": {"f_double": 5.4967596486399835, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "近地点角距": {"f_double": 2.4409720850623176, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "平近点角": {"f_double": 4.302029501893838, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "轨道数据有效标识": {"f_double": 1, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "滤波器收敛标识": {"f_double": 1, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "时间连续性标识": {"f_double": 1, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false}
+    }
+  }
+}
