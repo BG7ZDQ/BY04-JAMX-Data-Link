@@ -13,13 +13,16 @@ BY04 与 JAMX 是分别由哈尔滨工业大学附属中学、静安区青少年
 ## 星历自动更新
 
 仓库每天北京时间 08:17 通过 GitHub Actions 读取遥测服务器 `BY-04/GNS-S1`
-中的平均轨道根数，校验轨道有效、滤波器收敛、时间连续且数据不超过 48 小时后，
-生成带标准校验和的 BY04 与 JAMX01 TLE。`latest.tle` 保存最新结果，
+中的 GNSS 平均轨道根数和 ECEF 状态量，校验轨道有效、滤波器收敛、时间连续且
+数据不超过 48 小时后，将状态量转换到 TEME 并反拟合 SGP4 均值，生成带标准
+校验和的 BY04 与 JAMX01 TLE。量化后的历元残差超过 1 km 或 1 m/s 时任务会失败，
+不会发布错误星历。`latest.tle` 保存最新结果，
 `history.tle` 按遥测历元去重追加历史结果；更新完成后会自动重新发布 GitHub Pages。
 
 也可以在 Actions 页面手动运行 **Update ephemeris**。本地验证与离线回放命令：
 
 ```bash
+python -m pip install --requirement requirements.txt
 python -m unittest discover -s tests -v
 python scripts/build_ephemeris.py --input tests/telemetry_fixture.json --allow-stale --dry-run
 ```

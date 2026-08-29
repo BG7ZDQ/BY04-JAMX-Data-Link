@@ -8,6 +8,12 @@
       "升交点赤经": {"f_double": 5.4967596486399835, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
       "近地点角距": {"f_double": 2.4409720850623176, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
       "平近点角": {"f_double": 4.302029501893838, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "卫星位置X方向": {"f_double": -4029680.3, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "卫星位置Y方向": {"f_double": 4722260.6, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "卫星位置Z方向": {"f_double": 3056230.9, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "卫星速度X方向": {"f_double": 3342.77, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "卫星速度Y方向": {"f_double": -1511.08, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
+      "卫星速度Z方向": {"f_double": 6733.88, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
       "轨道数据有效标识": {"f_double": 1, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
       "滤波器收敛标识": {"f_double": 1, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false},
       "时间连续性标识": {"f_double": 1, "server_receive_time": "2026-08-29 13:33:15", "is_suspicious": false}
