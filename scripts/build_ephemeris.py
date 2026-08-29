@@ -28,7 +28,7 @@ SERVER_TIMEZONE = timezone.utc
 EARTH_MU = 3.986004418e14
 EARTH_ROTATION_RAD_S = 7.2921150e-5
 SGP4_EPOCH_JD = 2433281.5
-SATELLITES = (("BY04-MEAN", 98247), ("JAMX01-MEAN", 98248))
+SATELLITES = (("BY04", 98247), ("JAMX01", 98248))
 MAX_POSITION_ERROR_M = 1000.0
 MAX_VELOCITY_ERROR_M_S = 1.0
 MAX_PREVIOUS_POSITION_DIFFERENCE_KM = 100.0
@@ -487,9 +487,12 @@ def render_files(
             max_previous_position_km,
             max_previous_velocity_m_s,
         )
-        latest_blocks.append(f"{name}\n{line1}\n{line2}")
-        history_name = f"{name.removesuffix('-MEAN')}-{date_tag}-MEAN"
-        history_blocks = [block for block in history_blocks if block.splitlines()[0] != history_name]
+        history_name = f"{name}-{date_tag}"
+        latest_blocks.append(f"{history_name}\n{line1}\n{line2}")
+        obsolete_names = {history_name, f"{name}-{date_tag}-MEAN"}
+        history_blocks = [
+            block for block in history_blocks if block.splitlines()[0] not in obsolete_names
+        ]
         history_blocks.append(f"{history_name}\n{line1}\n{line2}")
     return (
         "\n\n".join(latest_blocks) + "\n",
