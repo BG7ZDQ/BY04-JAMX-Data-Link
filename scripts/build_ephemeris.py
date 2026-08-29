@@ -31,6 +31,8 @@ SGP4_EPOCH_JD = 2433281.5
 SATELLITES = (("BY04-MEAN", 98247), ("JAMX01-MEAN", 98248))
 MAX_POSITION_ERROR_M = 1000.0
 MAX_VELOCITY_ERROR_M_S = 1.0
+MAX_PREVIOUS_POSITION_DIFFERENCE_KM = 100.0
+MAX_PREVIOUS_VELOCITY_DIFFERENCE_M_S = 150.0
 
 
 @dataclass(frozen=True)
@@ -346,14 +348,22 @@ def parse_tle_epoch(field: str) -> datetime:
     return datetime(year, 1, 1, tzinfo=timezone.utc) + timedelta(days=float(field[2:]) - 1.0)
 
 
-def previous_state(text: str, catalog_number: int) -> tuple[datetime, float, int, int] | None:
+def previous_tle(text: str, catalog_number: int) -> tuple[str, str] | None:
     lines = text.splitlines()
     for index, line1 in enumerate(lines):
         if line1.startswith(f"1 {catalog_number:05d}") and index + 1 < len(lines):
             line2 = lines[index + 1]
             if len(line1) >= 68 and len(line2) >= 68 and line2.startswith(f"2 {catalog_number:05d}"):
-                return parse_tle_epoch(line1[18:32]), float(line2[52:63]), int(line1[64:68]), int(line2[63:68])
+                return line1, line2
     return None
+
+
+def previous_state(text: str, catalog_number: int) -> tuple[datetime, float, int, int] | None:
+    lines = previous_tle(text, catalog_number)
+    if not lines:
+        return None
+    line1, line2 = lines
+    return parse_tle_epoch(line1[18:32]), float(line2[52:63]), int(line1[64:68]), int(line2[63:68])
 
 
 def build_tle(
@@ -404,21 +414,89 @@ def validate_tle(line1: str, line2: str, orbit: Orbit) -> tuple[float, float]:
     return position_error_m, velocity_error_m_s
 
 
+def validate_continuity(
+    previous_lines: tuple[str, str] | None,
+    line1: str,
+    line2: str,
+    orbit: Orbit,
+    max_position_difference_km: float = MAX_PREVIOUS_POSITION_DIFFERENCE_KM,
+    max_velocity_difference_m_s: float = MAX_PREVIOUS_VELOCITY_DIFFERENCE_M_S,
+) -> tuple[float, float] | None:
+    if previous_lines is None:
+        return None
+    previous_line1, previous_line2 = previous_lines
+    previous_epoch = parse_tle_epoch(previous_line1[18:32])
+    if orbit.epoch < previous_epoch - timedelta(seconds=1):
+        raise ValueError(
+            f"Telemetry epoch {orbit.epoch.isoformat()} is older than the published TLE epoch "
+            f"{previous_epoch.isoformat()}"
+        )
+    jd, fraction = _epoch_julian(orbit)
+    states = []
+    for candidate_line1, candidate_line2 in ((previous_line1, previous_line2), (line1, line2)):
+        satellite = Satrec.twoline2rv(candidate_line1, candidate_line2, WGS72)
+        error, position, velocity = satellite.sgp4(jd, fraction)
+        if error:
+            raise ValueError(
+                f"TLE continuity propagation error {error}: {SGP4_ERRORS.get(error, 'unknown error')}"
+            )
+        states.append((position, velocity))
+    previous_state_vector, new_state_vector = states
+    position_difference_km = _norm(
+        tuple(new_state_vector[0][i] - previous_state_vector[0][i] for i in range(3))
+    )
+    velocity_difference_m_s = _norm(
+        tuple((new_state_vector[1][i] - previous_state_vector[1][i]) * 1000.0 for i in range(3))
+    )
+    if (
+        position_difference_km > max_position_difference_km
+        or velocity_difference_m_s > max_velocity_difference_m_s
+    ):
+        raise ValueError(
+            "TLE continuity check failed: "
+            f"position jump {position_difference_km:.3f} km "
+            f"(limit {max_position_difference_km:.3f} km), "
+            f"velocity jump {velocity_difference_m_s:.3f} m/s "
+            f"(limit {max_velocity_difference_m_s:.3f} m/s)"
+        )
+    return position_difference_km, velocity_difference_m_s
+
+
 def render_files(
-    orbit: Orbit, fitted: FittedElements, latest_text: str, history_text: str,
-) -> tuple[str, str, tuple[float, float]]:
+    orbit: Orbit,
+    fitted: FittedElements,
+    latest_text: str,
+    history_text: str,
+    max_previous_position_km: float = MAX_PREVIOUS_POSITION_DIFFERENCE_KM,
+    max_previous_velocity_m_s: float = MAX_PREVIOUS_VELOCITY_DIFFERENCE_M_S,
+) -> tuple[str, str, tuple[float, float], tuple[float, float] | None]:
     latest_blocks: list[str] = []
     history_blocks = [block.strip() for block in re.split(r"\n\s*\n", history_text.strip()) if block.strip()]
     date_tag = orbit.epoch.strftime("%Y%m%d")
     validation = (0.0, 0.0)
+    continuity = None
     for name, catalog_number in SATELLITES:
+        old_tle = previous_tle(latest_text, catalog_number)
         line1, line2 = build_tle(orbit, fitted, catalog_number, previous_state(latest_text, catalog_number))
         validation = validate_tle(line1, line2, orbit)
+        continuity = validate_continuity(
+            old_tle,
+            line1,
+            line2,
+            orbit,
+            max_previous_position_km,
+            max_previous_velocity_m_s,
+        )
         latest_blocks.append(f"{name}\n{line1}\n{line2}")
         history_name = f"{name.removesuffix('-MEAN')}-{date_tag}-MEAN"
         history_blocks = [block for block in history_blocks if block.splitlines()[0] != history_name]
         history_blocks.append(f"{history_name}\n{line1}\n{line2}")
-    return "\n\n".join(latest_blocks) + "\n", "\n\n".join(history_blocks) + "\n", validation
+    return (
+        "\n\n".join(latest_blocks) + "\n",
+        "\n\n".join(history_blocks) + "\n",
+        validation,
+        continuity,
+    )
 
 
 def atomic_write(path: Path, text: str) -> None:
@@ -434,6 +512,16 @@ def main() -> int:
     parser.add_argument("--latest", type=Path, default=Path(__file__).resolve().parents[1] / "latest.tle")
     parser.add_argument("--history", type=Path, default=Path(__file__).resolve().parents[1] / "history.tle")
     parser.add_argument("--max-age-hours", type=float, default=48.0)
+    parser.add_argument(
+        "--max-previous-position-km",
+        type=float,
+        default=MAX_PREVIOUS_POSITION_DIFFERENCE_KM,
+    )
+    parser.add_argument(
+        "--max-previous-velocity-m-s",
+        type=float,
+        default=MAX_PREVIOUS_VELOCITY_DIFFERENCE_M_S,
+    )
     parser.add_argument("--allow-stale", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
@@ -443,7 +531,14 @@ def main() -> int:
     fitted = fit_sgp4(orbit)
     latest_text = args.latest.read_text(encoding="utf-8") if args.latest.exists() else ""
     history_text = args.history.read_text(encoding="utf-8") if args.history.exists() else ""
-    new_latest, new_history, residual = render_files(orbit, fitted, latest_text, history_text)
+    new_latest, new_history, residual, continuity = render_files(
+        orbit,
+        fitted,
+        latest_text,
+        history_text,
+        args.max_previous_position_km,
+        args.max_previous_velocity_m_s,
+    )
     if args.dry_run:
         print(new_latest, end="")
     else:
@@ -452,6 +547,11 @@ def main() -> int:
         print(
             f"Built ephemeris for {orbit.epoch.isoformat()}; "
             f"quantized TLE residual {residual[0]:.3f} m, {residual[1]:.4f} m/s"
+            + (
+                f"; previous TLE difference {continuity[0]:.3f} km, {continuity[1]:.3f} m/s"
+                if continuity
+                else "; no previous TLE to compare"
+            )
         )
     return 0
 

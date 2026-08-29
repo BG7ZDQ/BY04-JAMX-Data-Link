@@ -30,7 +30,7 @@ class EphemerisTests(unittest.TestCase):
         self.assertLess(self.fitted.velocity_error_m_s, 0.05)
 
     def test_builds_valid_and_accurate_tles(self):
-        latest, history, residual = MODULE.render_files(self.orbit, self.fitted, "", "")
+        latest, history, residual, continuity = MODULE.render_files(self.orbit, self.fitted, "", "")
         lines = [line for line in latest.splitlines() if line.startswith(("1 ", "2 "))]
         self.assertEqual(len(lines), 4)
         for line in lines:
@@ -38,15 +38,27 @@ class EphemerisTests(unittest.TestCase):
             self.assertEqual(MODULE.tle_checksum(line[:-1]), line)
         self.assertLess(residual[0], MODULE.MAX_POSITION_ERROR_M)
         self.assertLess(residual[1], MODULE.MAX_VELOCITY_ERROR_M_S)
+        self.assertIsNone(continuity)
         self.assertIn("26241.56475694", latest)
         self.assertIn("BY04-20260829-MEAN", history)
 
     def test_history_replaces_same_day_and_is_idempotent(self):
-        latest, history, _ = MODULE.render_files(self.orbit, self.fitted, "", "")
-        latest_again, history_again, _ = MODULE.render_files(self.orbit, self.fitted, latest, history)
+        latest, history, _, _ = MODULE.render_files(self.orbit, self.fitted, "", "")
+        latest_again, history_again, _, continuity = MODULE.render_files(
+            self.orbit, self.fitted, latest, history
+        )
         self.assertEqual(latest_again, latest)
         self.assertEqual(history_again, history)
         self.assertEqual(history.count("BY04-20260829-MEAN"), 1)
+        self.assertEqual(continuity, (0.0, 0.0))
+
+    def test_rejects_excessive_change_from_previous_tle(self):
+        bad_previous = """BY04-MEAN
+1 98247U          26241.23142361  .00000000  00000-0  00000-0 0    22
+2 98247  97.4279 314.9411 0005338 139.8574 246.4881 15.08811828   622
+"""
+        with self.assertRaisesRegex(ValueError, "continuity check failed"):
+            MODULE.render_files(self.orbit, self.fitted, bad_previous, "")
 
     def test_rejects_invalid_quality_flag(self):
         payload = copy.deepcopy(self.payload)
