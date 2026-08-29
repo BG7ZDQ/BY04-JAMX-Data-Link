@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fit and publish BY-04/JAMX01 SGP4 TLEs from GNSS telemetry."""
+"""Fit and publish BY04 SGP4 TLEs from GNSS telemetry."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ SERVER_TIMEZONE = timezone.utc
 EARTH_MU = 3.986004418e14
 EARTH_ROTATION_RAD_S = 7.2921150e-5
 SGP4_EPOCH_JD = 2433281.5
-SATELLITES = (("BY04", 98247), ("JAMX01", 98248))
+SATELLITES = (("BY04", 98247),)
 MAX_POSITION_ERROR_M = 1000.0
 MAX_VELOCITY_ERROR_M_S = 1.0
 MAX_PREVIOUS_POSITION_DIFFERENCE_KM = 100.0
@@ -472,7 +472,7 @@ def render_files(
 ) -> tuple[str, str, tuple[float, float], tuple[float, float] | None]:
     latest_blocks: list[str] = []
     history_blocks = [block.strip() for block in re.split(r"\n\s*\n", history_text.strip()) if block.strip()]
-    date_tag = orbit.epoch.strftime("%Y%m%d")
+    date_tag = orbit.epoch.strftime("%y%m%d")
     validation = (0.0, 0.0)
     continuity = None
     for name, catalog_number in SATELLITES:
