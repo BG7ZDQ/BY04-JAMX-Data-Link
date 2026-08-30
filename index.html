@@ -57,6 +57,27 @@
             background-color: #0077cc;
         }
 
+        .data-show {
+            padding: 15px;
+            text-align: center;
+        }
+
+        .data-show table {
+            border-collapse: collapse;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .data-show table th,td {
+            border: 1px solid black;
+            text-align: center;
+            padding: 15px;
+        }
+
+        .data-show table thead tr {
+            background-color: #d0d0d0;
+        }
+
         .footer {
             margin-top: 30px;
             text-align: center;
@@ -73,6 +94,16 @@
     <!-- Google tag 数据统计 -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-FEX5HD8QZ2"></script>
     <script>window.dataLayer = window.dataLayer || [];function gtag() { dataLayer.push(arguments); }gtag('js', new Date());gtag('config', 'G-FEX5HD8QZ2');</script>
+    <script>
+        // fetch uv-bb stat
+        fetch("http://119.45.229.166/get_data?type=system&sat=BY-04&code=OBC-S3")
+            .then(response => response.text())
+            .then(data => unescape(data.slice(13, -1).replace(/\\u/g, "%u")))
+            .then(data => JSON.parse(data))
+            .then(jsonData => jsonData["data"]["BY-04"]["基带UV"])
+            .then(statJson => document.getElementById("data-show-tbody").insertAdjacentHTML("beforeend", `<tr><td>${statJson["chinese_code_name"]}</td><td>${statJson["f_text"]}</td><td>${statJson["server_receive_time"]}</td></tr>`))
+            .catch(error => console.error('Error:', error));
+    </script>
 </head>
 <body>
 
@@ -88,6 +119,21 @@
         <a target="_blank" href="http://119.45.229.166/pages/contributor.html">贡献者页面</a>
         <a target="_blank" href="http://1.92.100.130/pages/BY-04/cesium.html">姿态可视化</a>
 
+    </div>
+
+    <div class="data-show">
+        <h2>快捷数据查看</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>名称</th>
+                    <th>数据</th>
+                    <th>最后更新时间(UTC)</th>
+                </tr>
+            </thead>
+            <tbody id="data-show-tbody">
+            </tbody>
+        </table>
     </div>
 
     <div class="footer">
