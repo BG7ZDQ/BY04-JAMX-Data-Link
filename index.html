@@ -94,16 +94,6 @@
     <!-- Google tag 数据统计 -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-FEX5HD8QZ2"></script>
     <script>window.dataLayer = window.dataLayer || [];function gtag() { dataLayer.push(arguments); }gtag('js', new Date());gtag('config', 'G-FEX5HD8QZ2');</script>
-    <script>
-        // fetch uv-bb stat
-        fetch("http://119.45.229.166/get_data?type=system&sat=BY-04&code=OBC-S3")
-            .then(response => response.text())
-            .then(data => unescape(data.slice(13, -1).replace(/\\u/g, "%u")))
-            .then(data => JSON.parse(data))
-            .then(jsonData => jsonData["data"]["BY-04"]["基带UV"])
-            .then(statJson => document.getElementById("data-show-tbody").insertAdjacentHTML("beforeend", `<tr><td>${statJson["chinese_code_name"]}</td><td>${statJson["f_text"]}</td><td>${statJson["server_receive_time"]}</td></tr>`))
-            .catch(error => console.error('Error:', error));
-    </script>
 </head>
 <body>
 
